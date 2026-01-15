@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Frequência de Bolsistas</title>
+
+<style>
+body{font-family:Arial;background:#f4f4f4;padding:10px}
+h2{text-align:center}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{border:1px solid #ccc;padding:6px;font-size:13px;text-align:center}
+th{background:#eee}
+input,select,textarea{width:100%;box-sizing:border-box}
+textarea{resize:vertical}
+button{padding:6px 10px;margin:5px}
+.admin{background:#4CAF50;color:#fff}
+.coord{background:#2196F3;color:#fff}
+</style>
+</head>
+
+<body>
+
+<h2>Frequência de Bolsistas</h2>
+
+<div id="botoesAdmin"></div>
+
+<table>
+<thead>
+<tr>
+<th>Campus</th>
+<th>Nome</th>
+<th>Matrícula</th>
+<th>Setor</th>
+<th>Início</th>
+<th>Fim</th>
+<th>Email Coord.</th>
+<th>Jan</th><th>Fev</th><th>Mar</th><th>Abr</th><th>Mai</th><th>Jun</th>
+<th>Jul</th><th>Ago</th><th>Set</th><th>Out</th><th>Nov</th><th>Dez</th>
+<th>Justificativa</th>
+<th>Arquivo</th>
+<th>Ação</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<button onclick="salvar()">💾 Salvar</button>
+
+<script>
+const EMAIL_ADMIN="bolsatrabalho@prex.uespi.br";
+const email=sessionStorage.getItem("coordenadorLogado");
+const isAdmin=email?.toLowerCase().trim()===EMAIL_ADMIN;
+
+const SCRIPT_URL="SEU_LINK_DO_APPS_SCRIPT_AQUI";
+
+if(isAdmin){
+  document.getElementById("botoesAdmin").innerHTML=
+  `<button class="admin" onclick="adicionar()">➕ Adicionar Bolsista</button>`;
+}
+
+function criarSelect(valor){
+  return `
+  <select>
+    <option value=""></option>
+    <option ${valor==="sim"?"selected":""}>sim</option>
+    <option ${valor==="nao"?"selected":""}>nao</option>
+  </select>`;
+}
+
+function carregar(){
+fetch(`${SCRIPT_URL}?acao=listar&email=${email}`)
+.then(r=>r.json())
+.then(j=>{
+  if(j.status!=="ok") throw j.mensagem;
+  const tbody=document.getElementById("tbody");
+  tbody.innerHTML="";
+  j.dados.forEach(l=>{
+    const tr=document.createElement("tr");
+    l.forEach((v,i)=>{
+      const td=document.createElement("td");
+
+      if(isAdmin && i<=6){
+        if(i===4||i===5){
+          td.innerHTML=`<input type="date" value="${v||""}">`;
+        }else{
+          td.innerHTML=`<input value="${v||""}">`;
+        }
+      }
+      else if(i>=7 && i<=18){
+        td.innerHTML=criarSelect(v);
+      }
+      else if(i===19){
+        td.innerHTML=`<textarea>${v||""}</textarea>`;
+      }
+      else if(i===20){
+        td.innerHTML=`<input type="file">`;
+      }
+      else{
+        td.innerText=v||"";
+      }
+
+      tr.appendChild(td);
+    });
+
+    const acao=document.createElement("td");
+    if(isAdmin){
+      acao.innerHTML=`<button onclick="this.closest('tr').remove()">❌</button>`;
+    }
+    tr.appendChild(acao);
+
+    tbody.appendChild(tr);
+  });
+})
+.catch(e=>alert("Erro ao carregar dados"));
+}
+
+function adicionar(){
+  const tr=document.createElement("tr");
+  for(let i=0;i<21;i++){
+    const td=document.createElement("td");
+    if(i===4||i===5){
+      td.innerHTML=`<input type="date">`;
+    }
+    else if(i>=7 && i<=18){
+      td.innerHTML=criarSelect("");
+    }
+    else if(i===19){
+      td.innerHTML=`<textarea></textarea>`;
+    }
+    else if(i===20){
+      td.innerHTML=`<input type="file">`;
+    }
+    else{
+      td.innerHTML=`<input>`;
+    }
+    tr.appendChild(td);
+  }
+  const acao=document.createElement("td");
+  acao.innerHTML=`<button onclick="this.closest('tr').remove()">❌</button>`;
+  tr.appendChild(acao);
+  document.getElementById("tbody").appendChild(tr);
+}
+
+function salvar(){
+  const linhas=[];
+  document.querySelectorAll("#tbody tr").forEach(tr=>{
+    const l=[];
+    tr.querySelectorAll("td").forEach((td,i)=>{
+      const inp=td.querySelector("input,select,textarea");
+      if(inp){
+        l.push(inp.type==="file"?inp.files[0]||"":inp.value);
+      }
+    });
+    linhas.push(l);
+  });
+
+  fetch(SCRIPT_URL,{
+    method:"POST",
+    body:JSON.stringify({email,linhas})
+  })
+  .then(r=>r.json())
+  .then(j=>{
+    if(j.status==="ok") alert("Salvo com sucesso");
+    else alert(j.mensagem);
+  })
+  .catch(()=>alert("Erro ao salvar"));
+}
+
+carregar();
+</script>
+
+</body>
+</html>
